@@ -10,6 +10,7 @@ from torch.nn.functional import softmax
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.functional import softmax
 import torch.optim as optim
 import torch
 import torch.optim as Optimizer
@@ -63,7 +64,7 @@ class LeNet(object):
         if device is None:
             self.device = torch.device(
                 "cuda:0" if torch.cuda.is_available() else "cpu")
-        self.model = Model()
+        self.model = Model().to(self.device)
         
     def __train_one_epoch__(self, train_loader, optimizer, criterion,
                         valid_loader = None, epoch = 0, each_batch_idx = 0):
@@ -71,6 +72,9 @@ class LeNet(object):
         data_size = 0
         
         for batch_idx, (img, label) in enumerate(train_loader):
+            
+            img = img.to(self.device)
+            label = label.to(self.device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -96,10 +100,10 @@ class LeNet(object):
             print('Accuracy on the valid dataset {}'.format(acc))
             
     def train(self, epochs, train_loader, valid_loader = None):
+        self.model.to(self.device)
         self.model.train()
-        optimizer = optim.SGD(
-            filter(lambda p: p.requires_grad, self.model.parameters()),
-            lr=0.001, momentum=0.9)
+        optimizer = optim.SGD( self.model.parameters()),
+            lr=0.8)
 
         criterion = nn.CrossEntropyLoss()
         for epoch in range(epochs):
@@ -116,6 +120,8 @@ class LeNet(object):
         with torch.no_grad():
             for batch_idx, (data,labels) in enumerate(test_loader):
                 data = data.float()
+                data = data.to(self.device)
+                labels = labels.to(self.device)
                 outputs = self.model(data)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
@@ -124,9 +130,12 @@ class LeNet(object):
 
     def predict(self, test_loader):
         self.model.eval()
+        self.model.to(self.device)
         predict_results = np.empty(shape=(0, 10))
         with torch.no_grad():
             for batch_idx,  (img, label) in enumerate(test_loader):
+                img = img.to(self.device)
+                label = label.to(self.device)
                 outputs = self.model(img)
                 outputs = softmax(outputs)
                 predict_results = np.concatenate(
